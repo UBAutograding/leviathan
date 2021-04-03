@@ -8,6 +8,8 @@
 # Test binary, built with `go test -c`
 *.test
 
+# Built Binaries
+cmd/leviathan-agent/leviathan-agent
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
