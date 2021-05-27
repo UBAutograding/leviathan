@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/UBAutograding/leviathan/internal/dockerclient"
+	"github.com/UBAutograding/leviathan/internal/eventsource"
 	"github.com/UBAutograding/leviathan/internal/util"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
@@ -28,8 +29,10 @@ func main() {
 	}
 
 	// err = dockerclient.PullImage(cli, "ubautograding/autograding_image_2004")
+	// err = dockerclient.PullImage(cli, "jpetazzo/clock")
 
 	id, err := dockerclient.CreateNewContainer(cli, "ubautograding/autograding_image_2004")
+	// id, err := dockerclient.CreateNewContainer(cli, "jpetazzo/clock")
 	if err != nil {
 		log.Fatal("Failed to create image")
 	}
@@ -39,15 +42,19 @@ func main() {
 		cleanup(cli, id)
 	}
 
+	b := eventsource.SetupEventSource()
+	// Tmp to catch live logs
+	time.Sleep(5 * time.Second)
+
 	err = dockerclient.StartContainer(cli, id)
 	if err != nil {
 		cleanup(cli, id)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go dockerclient.TailContainerLogs(ctx, cli, id)
+	go dockerclient.TailContainerLogs(ctx, cli, id, b.Messages)
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(120 * time.Second)
 	cancel()
 
 	cleanup(cli, id)

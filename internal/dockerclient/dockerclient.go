@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/UBAutograding/leviathan/internal/chanwriter"
 	"github.com/UBAutograding/leviathan/internal/util"
 	"github.com/docker/cli/cli/connhelper"
 	"github.com/docker/docker/api/types"
@@ -82,7 +83,8 @@ func ListContainer(c *client.Client) error {
 func CreateNewContainer(c *client.Client, image string) (string, error) {
 	config := &container.Config{
 		Image: image,
-		Cmd:   []string{"sh", "-c", "su autolab -c \"autodriver -u 100 -f 104857600 -t 900 -o 104857600 autolab\""},
+		// Cmd:   []string{},
+		Cmd: []string{"sh", "-c", "su autolab -c \"autodriver -u 100 -f 104857600 -t 900 -o 104857600 autolab\""},
 	}
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
@@ -164,14 +166,16 @@ func StopContainer(c *client.Client, containerID string) error {
 	return nil
 }
 
-func TailContainerLogs(ctx context.Context, c *client.Client, containerID string) error {
+func TailContainerLogs(ctx context.Context, c *client.Client, containerID string, messages chan string) error {
 	reader, err := c.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true})
 	if err != nil {
 		log.WithFields(log.Fields{"error": err, "container_id": containerID}).Error("failed to get container logs")
 		return err
 	}
+	defer reader.Close()
 
-	_, err = stdcopy.StdCopy(os.Stdout, os.Stdout, reader)
+	writer := chanwriter.NewChanWriter(messages)
+	_, err = stdcopy.StdCopy(writer, writer, reader)
 	if err != nil && err != io.EOF && err != context.Canceled {
 		log.WithFields(log.Fields{"error": err, "container_id": containerID}).Error("failed to show container logs")
 		return err
@@ -204,6 +208,7 @@ func CopyToContainer(c *client.Client, containerID string, filePath string) erro
 	config := types.CopyToContainerOptions{
 		AllowOverwriteDirWithFile: true,
 	}
+	// err = c.CopyToContainer(context.Background(), containerID, "/home/", archive, config)
 	err = c.CopyToContainer(context.Background(), containerID, "/home/autolab/", archive, config)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err, "container_id": containerID, "filePath": filePath}).Error("failed to copy files into container")
