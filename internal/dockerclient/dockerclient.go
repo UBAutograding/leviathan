@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -132,7 +131,7 @@ func PullImage(c *client.Client, image string) error {
 	}
 	defer out.Close()
 
-	response, err := ioutil.ReadAll(out)
+	response, err := io.ReadAll(out)
 	if err != nil {
 		return err
 	}
